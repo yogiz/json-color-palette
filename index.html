@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Color Pallete</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background: linear-gradient(90deg, #4b6cb7 0%, #182848 100%);
+      }
+
+      .color-container {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 5px 10px;
+      }
+
+      .color-box {
+        background: white;
+        backdrop-filter: blur(20px);
+        width: 150px;
+        padding: 10px;
+        text-align: center;
+      }
+
+      .color-code {
+        font-size: 0.8rem;
+      }
+
+      input[type="color"] {
+        width: 100%;
+        height: 50px;
+      }
+
+      textarea#colorsTextArea {
+        background: #222e44;
+        color: #c1cbe6;
+        height: 400px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h3 class="mt-4 mb-2 text-white">JSON Color Palette <button type="button" class="btn btn-primary ml-2" onclick="openEditModal()">Edit/ Copy</button>
+      </h3>
+      <div class="mb-4 ml-2">
+        <div class="form-check text-white">
+          <input class="form-check-input" type="checkbox" value="" id="warningCheck" onclick="changeWarningsSetting()">
+          <label class="form-check-label" for="warningCheck"> Disable warning when deleting item? </label>
+        </div>
+        <div class="form-check text-white">
+          <input class="form-check-input" type="checkbox" value="" id="needSave" onclick="needSaveSetting()" checked>
+          <label class="form-check-label" for="needSave"> saving pallete to the browser? </label>
+        </div>
+      </div>
+      <div class="color-container" id="color-container"></div>
+    </div>
+    <!-- Edit Colors Modal -->
+    <div class="modal" id="editColorsModal" tabindex="-1" role="dialog">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Edit Colors</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <textarea id="colorsTextArea" class="form-control" rows="5"></textarea>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-primary" onclick="saveColors()">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Delete Warning Modal -->
+    <div class="modal" id="deleteModal" tabindex="-1" role="dialog">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Delete Confirmation</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p>Are you sure you want to delete " <strong>
+                <span id="itemName"></span>
+              </strong>"? </p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-danger" onclick="deleteItem()">Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <script src="
+https://cdn.jsdelivr.net/npm/@johnls/json5@2.3.0/dist/index.min.js
+"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        const STORAGE_NAME = "my-color-pallete"
+        const need_save = document.getElementById('needSave')
+        const warning_check = document.getElementById('warningCheck')
+        let delete_selector = ''
+        let need_save_data = localStorage.getItem('needSave')
+        if (need_save_data) {
+          need_save.checked = need_save_data == 'true' ? true : false
+        }
+        let colors = readLocal() || {
+          success: '#219653',
+          danger: '#D34053',
+          warning: '#FFA70B',
+        };
+        const colorContainer = document.getElementById('color-container');
+        // Populate color boxes
+        renderColorBoxes(colors);
+        // Function to change color
+        window.changeColor = function(event) {
+          const colorName = event.target.dataset.colorName;
+          const newColor = event.target.value;
+          // Update color in the colors object
+          colors[colorName] = newColor;
+          saveLocal(colors)
+          // Update color code display
+          const previousSibling = event.target.previousElementSibling;
+          const colorCodeSpan = previousSibling.children[1]
+          colorCodeSpan.textContent = newColor;
+        };
+        // Function to save colors from textarea
+        window.saveColors = function() {
+          const colorsTextArea = document.getElementById('colorsTextArea');
+          const newColorsData = colorsTextArea.value.trim();
+          try {
+            colors = JSON5.parse(newColorsData);
+            renderColorBoxes(colors);
+            saveLocal(colors)
+            $('#editColorsModal').modal('hide');
+          } catch (error) {
+            alert('Invalid JSON5 format. Please enter a valid JSON5 object.');
+          }
+        };
+        // Function to render color boxes
+        function renderColorBoxes(colors) {
+          colorContainer.innerHTML = '';
+          Object.entries(colors).forEach(([name, color]) => {
+            const colorBox = document.createElement('div');
+            colorBox.className = 'color-box border rounded p-2';
+            colorBox.innerHTML = `
+            
+                
+								<button type="button" class="close" aria-label="Close" onclick="warningDeleteModal(\'${name}\')">
+									<span aria-hidden="true">&times;</span>
+								</button>
+								<div class="color-name">
+									<h5 class="mb-0">${name}</h5>
+									<span class="text-muted color-code mb-0">${color}</span>
+								</div>
+								<input type="color" value="${color}" data-color-name="${name}" onchange="changeColor(event)" class="form-control p-1">
+          `;
+            colorContainer.appendChild(colorBox);
+          });
+        }
+        window.openEditModal = function() {
+          const colorsTextArea = document.getElementById('colorsTextArea');
+          colorsTextArea.value = JSON.stringify(colors, null, 2);
+          $('#editColorsModal').modal('show');
+        };
+        window.warningDeleteModal = function(name) {
+          delete_selector = name
+          if (warning_check.checked) {
+            deleteItem();
+            return
+          }
+          $('#itemName').text(name);
+          $('#deleteModal').modal('show');
+        };
+        window.deleteItem = function() {
+          console.log("deleting ", delete_selector)
+          delete colors[delete_selector]
+          renderColorBoxes(colors)
+          saveLocal(colors)
+          $('#deleteModal').modal('hide');
+        }
+        window.needSaveSetting = function() {
+          localStorage.setItem('needSave', need_save.checked == true ? 'true' : 'false')
+        }
+
+        function saveLocal(jsonData) {
+          try {
+            if (need_save.checked == false) return
+            const data = JSON.stringify(jsonData)
+            localStorage.setItem(STORAGE_NAME, data)
+          } catch (e) {
+            console.log(e)
+          }
+        }
+
+        function readLocal() {
+          try {
+            if (need_save.checked == false) return null
+            let data = localStorage.getItem(STORAGE_NAME)
+            if (data) data = JSON.parse(data)
+            return data
+          } catch (e) {
+            console.log(e)
+            return null
+          }
+        }
+      });
+    </script>
+  </body>
+</html>
