@@ -1,4 +1,4 @@
-# JSON Color Pallete Viewer
+# JSON Color Palette Viewer
 
 Simple One Page JSON Color Palette Viewer.
 *Example usage : view colors object from Tailwind css config.*
